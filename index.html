@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #1f2937;
+        }
+        header {
+            background: #2563eb;
+            color: white;
+            padding: 24px 5%;
+        }
+        header h1 { margin: 0 0 6px; }
+        header p { margin: 0; opacity: .9; }
+
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 25px auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 22px;
+            box-shadow: 0 5px 18px rgba(0,0,0,.08);
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .full { grid-column: 1 / -1; }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        button {
+            border: 0;
+            padding: 11px 17px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .primary { background: #2563eb; color: white; }
+        .secondary { background: #6b7280; color: white; }
+        .edit { background: #f59e0b; color: white; margin-right: 5px; }
+        .delete { background: #dc2626; color: white; }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .toolbar input { flex: 1; }
+
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 13px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+
+        th {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .success { background: #dcfce7; color: #166534; }
+        .error { background: #fee2e2; color: #991b1b; }
+
+        @media (max-width: 700px) {
+            form { grid-template-columns: 1fr; }
+            .full { grid-column: auto; }
+            .toolbar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Student Management System</h1>
+    <p>Complete CRUD Web Application</p>
+</header>
+
+<div class="container">
+
+    <div id="message" class="message"></div>
+
+    <div class="card">
+        <h2 id="formTitle">Add Student</h2>
+
+        <form id="studentForm">
+            <input type="hidden" id="studentId">
+
+            <div>
+                <label>Name</label>
+                <input id="name" type="text" placeholder="Enter student name" required>
+            </div>
+
+            <div>
+                <label>Email</label>
+                <input id="email" type="email" placeholder="Enter email" required>
+            </div>
+
+            <div>
+                <label>Age</label>
+                <input id="age" type="number" min="15" max="100" placeholder="Enter age" required>
+            </div>
+
+            <div>
+                <label>Course</label>
+                <input id="course" type="text" placeholder="Enter course" required>
+            </div>
+
+            <div class="full">
+                <button class="primary" type="submit" id="submitBtn">Add Student</button>
+                <button class="secondary" type="button" onclick="resetForm()">Clear</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Student Records</h2>
+
+        <div class="toolbar">
+            <input id="search" type="text" placeholder="Search by name, email or course..." oninput="loadStudents()">
+            <button class="primary" onclick="loadStudents()">Refresh</button>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Age</th>
+                        <th>Course</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const API = "/api/students/";
+
+function showMessage(message, type) {
+    const box = document.getElementById("message");
+    box.textContent = message;
+    box.className = "message " + type;
+    box.style.display = "block";
+
+    setTimeout(() => {
+        box.style.display = "none";
+    }, 3000);
+}
+
+async function loadStudents() {
+    const search = document.getElementById("search").value.trim();
+    const url = search ? `${API}?search=${encodeURIComponent(search)}` : API;
+
+    try {
+        const response = await fetch(url);
+        const students = await response.json();
+
+        const table = document.getElementById("studentTable");
+        table.innerHTML = "";
+
+        if (students.length === 0) {
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center;">No students found</td>
+                </tr>`;
+            return;
+        }
+
+        students.forEach(student => {
+            table.innerHTML += `
+                <tr>
+                    <td>${student.id}</td>
+                    <td>${escapeHTML(student.name)}</td>
+                    <td>${escapeHTML(student.email)}</td>
+                    <td>${student.age}</td>
+                    <td>${escapeHTML(student.course)}</td>
+                    <td>
+                        <button class="edit" onclick="editStudent(${student.id})">Edit</button>
+                        <button class="delete" onclick="deleteStudent(${student.id})">Delete</button>
+                    </td>
+                </tr>`;
+        });
+    } catch (error) {
+        showMessage("Backend is not available.", "error");
+    }
+}
+
+async function submitStudent(event) {
+    event.preventDefault();
+
+    const id = document.getElementById("studentId").value;
+
+    const student = {
+        name: document.getElementById("name").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        age: document.getElementById("age").value,
+        course: document.getElementById("course").value.trim()
+    };
+
+    if (!student.name || !student.email || !student.age || !student.course) {
+        showMessage("All fields are required.", "error");
+        return;
+    }
+
+    const method = id ? "PUT" : "POST";
+    const url = id ? `${API}${id}/` : API;
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(student)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            showMessage(result.error || "Operation failed.", "error");
+            return;
+        }
+
+        showMessage(
+            id ? "Student updated successfully!" : "Student added successfully!",
+            "success"
+        );
+
+        resetForm();
+        loadStudents();
+    } catch (error) {
+        showMessage("Unable to connect to backend.", "error");
+    }
+}
+
+async function editStudent(id) {
+    try {
+        const response = await fetch(`${API}${id}/`);
+        const student = await response.json();
+
+        if (!response.ok) {
+            showMessage(student.error, "error");
+            return;
+        }
+
+        document.getElementById("studentId").value = student.id;
+        document.getElementById("name").value = student.name;
+        document.getElementById("email").value = student.email;
+        document.getElementById("age").value = student.age;
+        document.getElementById("course").value = student.course;
+
+        document.getElementById("formTitle").textContent = "Edit Student";
+        document.getElementById("submitBtn").textContent = "Update Student";
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+        showMessage("Unable to load student.", "error");
+    }
+}
+
+async function deleteStudent(id) {
+    if (!confirm("Are you sure you want to delete this student?")) return;
+
+    try {
+        const response = await fetch(`${API}${id}/`, {
+            method: "DELETE"
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            showMessage(result.error || "Delete failed.", "error");
+            return;
+        }
+
+        showMessage("Student deleted successfully!", "success");
+        loadStudents();
+    } catch (error) {
+        showMessage("Unable to connect to backend.", "error");
+    }
+}
+
+function resetForm() {
+    document.getElementById("studentForm").reset();
+    document.getElementById("studentId").value = "";
+    document.getElementById("formTitle").textContent = "Add Student";
+    document.getElementById("submitBtn").textContent = "Add Student";
+}
+
+function escapeHTML(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+document.getElementById("studentForm").addEventListener("submit", submitStudent);
+loadStudents();
+</script>
+
+</body>
+</html>
